@@ -32,9 +32,15 @@ def fetch(code):
         country = item.get("country") or {}
         region = (item.get("region") or {}).get("id")
         iso3 = item.get("countryiso3code")
+        # Exclude aggregate regions and non-country rows.
         if not iso3 or len(iso3) != 3 or region == "NA":
             continue
-        rows.append({"iso3": iso3, "country": country.get("value"), "year": int(item["date"]), "value": item.get("value")})
+        rows.append({
+            "iso3": iso3,
+            "country": country.get("value"),
+            "year": int(item["date"]),
+            "value": item.get("value"),
+        })
     return pd.DataFrame(rows), response.url
 
 frames = []
