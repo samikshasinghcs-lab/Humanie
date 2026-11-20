@@ -1,4 +1,4 @@
-"""HUMANIE v0.9 smoke checks; run from project root: python scripts/smoke_test.py"""
+"""HUMANIE API smoke checks; run from project root: python scripts/smoke_test.py"""
 from pathlib import Path
 import tempfile
 import sys
@@ -30,9 +30,10 @@ for scenario in ("urban", "rural", "low_capacity"):
     data = response.json()
     assert len(data["floor_sweep"]) == 11
     assert [x["floor_pct"] for x in data["floor_sweep"]] == list(range(0, 51, 5))
+    assert data["floored"]["minimum_community_coverage_pct"] >= 29.99
     assert len(data["community_results"]) == 10
     for policy in ("baseline", "unconstrained", "floored"):
         assert data[policy]["allocated_units"] <= data["constraints"]["available_stock_units"] + 1e-5
         assert data[policy]["transport_cost"] <= data["constraints"]["transport_budget_cost_units"] + 1e-5
-print("HUMANIE v0.9 API smoke checks passed for auth, headers, three scenarios, and floor sweeps.")
+print("HUMANIE API smoke checks passed for auth, headers, three scenarios, and floor sweeps.")
 _tmp.cleanup()
