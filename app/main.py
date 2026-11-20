@@ -38,6 +38,49 @@ oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 app = FastAPI(title="HUMANIE Intelligence API", version="0.9.0")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
+# HUMANIE v1.0: fairness, sensitivity and tamper-evident audit utilities
+from app.extraordinary_upgrade import AuditLedger, Community, allocation as floor_allocation, sensitivity as weight_sensitivity
+
+V1_LEDGER = AuditLedger(str(ROOT / "data" / "humanie_audit_chain.db"))
+
+class FloorAllocationRequest(BaseModel):
+    communities: list[dict] = Field(min_length=1, max_length=100)
+    stock: float = Field(gt=0, le=1_000_000_000)
+    transport_budget: float = Field(gt=0, le=1_000_000_000)
+    floor: float = Field(ge=0, le=1)
+
+class SensitivityRequest(BaseModel):
+    candidates: list[dict] = Field(min_length=2, max_length=100)
+    weights: dict[str, float]
+    noise: float = Field(default=0.30, ge=0, le=1)
+    draws: int = Field(default=200, ge=10, le=10000)
+
+@app.post("/api/v1/evaluation/floor-allocation")
+def v1_floor_allocation(body: FloorAllocationRequest, user=Depends(get_user)):
+    try:
+        nodes=[Community(name=str(x["name"]), demand=float(x["demand"]), vulnerability=float(x["vulnerability"]), transport_cost=float(x["transport_cost"])) for x in body.communities]
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(422,"Each community requires name, demand, vulnerability and transport_cost.")
+    result=floor_allocation(nodes,body.stock,body.transport_budget,body.floor)
+    audit(user["id"],"v1_floor_allocation",json.dumps({"feasible":result.get("feasible"),"floor":body.floor}))
+    return result
+
+@app.post("/api/v1/evaluation/weight-sensitivity")
+def v1_weight_sensitivity(body: SensitivityRequest, user=Depends(get_user)):
+    if not body.weights or any(not isinstance(v,(int,float)) or v<0 for v in body.weights.values()):
+        raise HTTPException(422,"Weights must be a non-empty mapping of non-negative numeric values.")
+    if any(not all(k in candidate for k in body.weights) or "id" not in candidate for candidate in body.candidates):
+        raise HTTPException(422,"Each candidate must contain an id and every scored weight key.")
+    result=weight_sensitivity(body.candidates,body.weights,body.noise,body.draws)
+    audit(user["id"],"v1_weight_sensitivity",json.dumps({"draws":body.draws,"stability":result.get("top1_stability_pct")}))
+    return result
+
+@app.get("/api/v1/audit-chain/verify")
+def v1_audit_verify(user=Depends(get_user)):
+    result=V1_LEDGER.verify()
+    audit(user["id"],"v1_audit_chain_verify",json.dumps(result))
+    return result
+
 
 # Simple in-memory rate limiter for demo protection. Use a gateway/WAF in production.
 RATE: dict[str, list[float]] = {}
