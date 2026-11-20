@@ -60,3 +60,8 @@ Security, privacy, institutional access controls, provider verification, routing
 ## License
 
 See LICENSE.
+
+
+## v1.0 Extraordinary Upgrade (branch)
+
+This branch adds standalone upgrade primitives in `app/extraordinary_upgrade.py`: chained audit ledger, persistent reviewer/approver separation, floor feasibility diagnostics and allocation solver, and weight sensitivity. Unit tests are in `tests/`. Run `python -m unittest discover -s tests -v`. These primitives are not yet wired to the original UI/API. See `EXTRAORDINARY_UPGRADE_INTEGRATION.md`.
