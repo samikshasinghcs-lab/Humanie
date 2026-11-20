@@ -21,6 +21,8 @@ venv/
 *.sqlite3
 logs/
 tmp/
+data/*.csv
+!data/.gitkeep
 
 # Editor/OS
 .vscode/
