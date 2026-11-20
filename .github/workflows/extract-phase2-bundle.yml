@@ -2,8 +2,6 @@ name: Extract HUMANIE Phase 2 Bundle
 on:
   push:
     branches: [main]
-    paths:
-      - 'HUMANIE_v0_9_Phase2_Full_Cook.zip'
 permissions:
   contents: write
 jobs:
