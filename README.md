@@ -170,3 +170,35 @@ Use `DEMO_WALKTHROUGH.md`. Record the workflow sequence before the event; do not
 - Presentation clarifies unequal throughput, labels scenario baselines by matching colours, and marks low-capacity infeasibility beyond a 30% floor.
 - The Random Forest remains exploratory; this release does not claim measured ML performance or use it for allocation.
 - The actual 66-second demo recording and full live integration/smoke test remain to be completed by the presenter.
+
+
+## HUMANIE v0.9+ district intelligence additions (demo/pilot)
+
+- Case-level dignity/agency preferences can be supplied as JSON `constraints` when creating a case.
+- Provider capabilities can be supplied as JSON `attributes` when registering a resource. Matching treats these supplied key/value constraints as hard filters (missing or mismatched attributes exclude a candidate).
+- `POST /api/district/matches/generate` returns candidate recommendations and constraint exclusion reasons.
+- `GET /api/district/intelligence/silent-exclusion` flags localities with high recorded average vulnerability and below-average case counts. This is a records-based signal only—not proof of exclusion or prevalence.
+- `GET /api/district/intelligence/provider-leakage` flags recorded dispatch/receipt shortfalls for investigation; it is not an allegation.
+- `GET /api/district/matches/{match_id}/why-not` provides score-based comparison with eligible alternative providers.
+- District console includes buttons for silent-exclusion and receipt-discrepancy scans.
+
+These capabilities are exploratory and require verified field data, safeguards, independent review and human decision-making before operational use.
+
+## Phase 2 operational additions (v0.9.1 code snapshot)
+
+- Hash-chained audit records in a separate SQLite ledger (`humanie_audit_chain.db` adjacent to configured DB); `GET /api/audit/verify` checks link and record digests. `POST /api/audit/tamper-test` deliberately mutates a ledger row for demonstration and **leaves the test ledger compromised**.
+- Scenario endpoint `POST /api/simulate` runs SciPy/HiGHS on open, recorded workspace cases for food/training/employment types, with recorded demand and the minimum cost-per-unit among matching active providers used as a proxy route cost. This is a simplified workspace model, not a district-wide logistics model. Shadow-price fields are solver marginals and Bottleneck Advisor text is conditional on constraint marginal values.
+- Floor infeasibility currently reports floor-only aggregate stock/transport slack estimates, not a full auxiliary slack LP; do not describe it as a fully optimized infeasibility recovery solver.
+- Case matching can store dignity preferences (cooking fuel, dietary needs, commute, childcare) in the constraints JSON. Provider attributes must encode matching values; absent capability data is not proof of compatibility. Haversine is available when both case and provider coordinate arrays are supplied; matching otherwise falls back to locality/district proxies.
+- Silent exclusion and approver-bias endpoints are workspace-records triage heuristics. They are **not ward vulnerability baselines** and do not prove discrimination. Overrides are currently reason-count insights from recorded audit text; semantic clustering is not implemented.
+- Crisis and SMS parser are simulation-only. The mobile `/crisis` page proposes/records shock scenarios, while an approval flag logs a demo approval; no external dispatch/action is executed. SMS commands support English plus documented command aliases, not robust multilingual natural-language parsing or direct WhatsApp integration.
+- Opt-in transition endpoint records pathway tracking. CSV/PDF brief exports recorded cases/deliveries and ledger verification status.
+- Leaflet map draws only records with user-provided coordinates. It is not a geocoded or verified Mysuru/Bengaluru ward map, does not calculate road routing, and the QR directs to the crisis proposal page.
+
+### Data grounding: ingest only sourced records
+
+Use `scripts/ingest_district.py INPUT.csv OUTPUT.json` to validate locality CSV records. Required fields: `district,locality,latitude,longitude,source,source_date,vulnerability_proxy`. This package does not claim to have ingested or verified census/SECC ward data. Replace workspace/demo records only after a source and its provenance are checked.
+
+### Secret configuration
+
+Set `HUMANIE_SECRET_KEY` to a strong, stable secret in deployment (Render generates one in `render.yaml`). If absent locally, the app generates an ephemeral random secret: tokens will invalidate on restart. The old hard-coded insecure fallback has been removed. Set a persistent DB path appropriate to your deployment; free ephemeral hosts may lose database files.

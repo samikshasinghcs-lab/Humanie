@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "data"
 STATIC = Path(__file__).resolve().parent / "static"
 DB_PATH = Path(os.getenv("HUMANIE_DB_PATH", str(ROOT / "humanie.db")))
-SECRET = os.getenv("HUMANIE_SECRET_KEY", "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME")
+SECRET = os.getenv("HUMANIE_SECRET_KEY") or os.getenv("SECRET_KEY") or __import__("secrets").token_urlsafe(48)
+SECRET_CONFIGURED = bool(os.getenv("HUMANIE_SECRET_KEY") or os.getenv("SECRET_KEY"))
 ALGORITHM = "HS256"
 TOKEN_MINUTES = 60 * 8
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -107,11 +108,23 @@ def init_db():
             category TEXT NOT NULL, description TEXT NOT NULL, severity TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'open', resolution TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""")
+        # Forward-compatible pilot metadata migrations.
+        for table, column, definition in [
+            ("district_cases", "constraints_json", "TEXT NOT NULL DEFAULT '{}'"),
+            ("district_resources", "attributes_json", "TEXT NOT NULL DEFAULT '{}'"),
+        ]:
+            existing = {r[1] for r in c.execute(f"PRAGMA table_info({table})")}
+            if column not in existing:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
+AUDIT_LEDGER = None
 def audit(user_id, event, detail=""):
     with db() as c:
         c.execute("INSERT INTO audit(user_id,event,created_at,detail) VALUES(?,?,?,?)",
                   (user_id, event, datetime.now(timezone.utc).isoformat(), detail[:500]))
+    try:
+        if AUDIT_LEDGER is not None: AUDIT_LEDGER.append(event, "", user_id, "system", {"detail": detail[:500]})
+    except Exception: pass
 
 def get_user(token: str = Depends(oauth2)):
     try:
@@ -154,6 +167,10 @@ def require_real_data():
         raise HTTPException(409, "Public dataset not downloaded. Run: python scripts/fetch_world_bank.py")
     return pd.read_csv(path)
 
+# Phase 2 route integration: ledger and scenario/civic workflow endpoints.
+from .phase2 import attach as _attach_phase2
+AUDIT_LEDGER = _attach_phase2(app, DB_PATH, db, get_user, audit, ROOT, STATIC)
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -164,16 +181,15 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status":"ok","version":"0.9.0","secret_configured":SECRET != "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME"}
+    return {"status":"ok","version":"0.9.1","secret_configured":SECRET_CONFIGURED,"secret_ephemeral":not SECRET_CONFIGURED}
 
 @app.post("/api/auth/register", dependencies=[Depends(rate_limit)])
 def register(body: Register):
     email = body.email.strip().lower()
     if "@" not in email:
         raise HTTPException(422, "Enter a valid email address")
-    if SECRET == "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME":
-        # Registration is allowed locally but token secret must be changed before deployment.
-        pass
+    if not SECRET_CONFIGURED:
+        audit(0, "auth_warning", "Ephemeral secret: tokens invalidate on restart; set HUMANIE_SECRET_KEY")
     hashed = pwd_context.hash(body.password)
     try:
         with db() as c:
@@ -529,6 +545,11 @@ class CaseCreate(BaseModel):
     vulnerability: int = Field(ge=0, le=100)
     demand_units: float = Field(gt=0, le=100000)
     category: str = Field(min_length=2, max_length=80)
+    has_cooking_fuel: Optional[bool] = None
+    dietary_needs: Optional[str] = Field(default=None, max_length=200)
+    max_commute_km: Optional[float] = Field(default=None, ge=0, le=500)
+    childcare_needed: Optional[bool] = None
+    constraints: dict = Field(default_factory=dict, description="Optional dignity/agency preferences and practical constraints.")
 
 class ResourceCreate(BaseModel):
     resource_ref: str = Field(min_length=3, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
@@ -540,6 +561,7 @@ class ResourceCreate(BaseModel):
     unit: str = Field(min_length=1, max_length=30)
     cost_per_unit: float = Field(default=0, ge=0, le=10000000)
     verified: bool = False
+    attributes: dict = Field(default_factory=dict, description="Provider capabilities/tags used to check case constraints.")
 
 class MatchDecision(BaseModel):
     decision: str = Field(pattern=r"^(approve|reject)$")
@@ -586,6 +608,10 @@ def _distance_proxy(a: str, b: str) -> float:
     # Until verified coordinates and routing are integrated, locality equality is only a coarse proxy.
     return 0.0 if a.strip().casefold() == b.strip().casefold() else 1.0
 
+@app.get("/crisis")
+def crisis_mobile():
+    return FileResponse(STATIC / "crisis.html")
+
 @app.get("/district")
 def district_console():
     return FileResponse(STATIC / "district.html")
@@ -595,8 +621,8 @@ def create_district_case(body: CaseCreate, user=Depends(get_user)):
     now = _now()
     try:
         with db() as c:
-            cur = c.execute("""INSERT INTO district_cases(owner_id,case_ref,district,locality,need_type,urgency,vulnerability,demand_units,category,created_at,updated_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (user["id"],body.case_ref,body.district,body.locality,body.need_type,body.urgency,body.vulnerability,body.demand_units,body.category,now,now))
+            cur = c.execute("""INSERT INTO district_cases(owner_id,case_ref,district,locality,need_type,urgency,vulnerability,demand_units,category,created_at,updated_at,constraints_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""", (user["id"],body.case_ref,body.district,body.locality,body.need_type,body.urgency,body.vulnerability,body.demand_units,body.category,now,now,json.dumps({**body.constraints,**({"has_cooking_fuel":body.has_cooking_fuel} if body.has_cooking_fuel is not None else {}),**({"dietary_needs":body.dietary_needs} if body.dietary_needs else {}),**({"max_commute_km":body.max_commute_km} if body.max_commute_km is not None else {}),**({"childcare_needed":body.childcare_needed} if body.childcare_needed is not None else {})},ensure_ascii=False)))
             rid = cur.lastrowid
     except sqlite3.IntegrityError:
         raise HTTPException(409, "Case reference already exists in this workspace")
@@ -614,8 +640,8 @@ def create_district_resource(body: ResourceCreate, user=Depends(get_user)):
     now=_now()
     try:
         with db() as c:
-            cur=c.execute("""INSERT INTO district_resources(owner_id,resource_ref,district,locality,provider_type,resource_type,capacity,remaining,unit,cost_per_unit,verified,created_at,updated_at)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(user["id"],body.resource_ref,body.district,body.locality,body.provider_type,body.resource_type,body.capacity,body.capacity,body.unit,body.cost_per_unit,int(body.verified),now,now))
+            cur=c.execute("""INSERT INTO district_resources(owner_id,resource_ref,district,locality,provider_type,resource_type,capacity,remaining,unit,cost_per_unit,verified,created_at,updated_at,attributes_json)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",(user["id"],body.resource_ref,body.district,body.locality,body.provider_type,body.resource_type,body.capacity,body.capacity,body.unit,body.cost_per_unit,int(body.verified),now,now,json.dumps(body.attributes,ensure_ascii=False)))
             rid=cur.lastrowid
     except sqlite3.IntegrityError:
         raise HTTPException(409,"Resource reference already exists in this workspace")
@@ -630,22 +656,43 @@ def list_district_resources(user=Depends(get_user)):
 
 @app.post("/api/district/matches/generate")
 def generate_matches(user=Depends(get_user)):
-    """Generate explainable candidate matches. This does not allocate or approve aid."""
+    """Explainable candidate ranking with optional dignity/agency constraint checks."""
     with db() as c:
         cases=[dict(r) for r in c.execute("SELECT * FROM district_cases WHERE owner_id=? AND status='open'",(user["id"],)).fetchall()]
         resources=[dict(r) for r in c.execute("SELECT * FROM district_resources WHERE owner_id=? AND status='active' AND remaining>0",(user["id"],)).fetchall()]
-    made=[]
+    made=[]; excluded=[]
     for case in cases:
+        constraints=json.loads(case.get("constraints_json") or "{}")
         candidates=[]
         for resource in resources:
             if case["need_type"] != resource["resource_type"]: continue
             if case["district"].strip().casefold() != resource["district"].strip().casefold(): continue
+            attrs=json.loads(resource.get("attributes_json") or "{}")
+            unmet=[]
+            # Generic matching contract: each constraint key must match provider attribute.
+            for key, required in constraints.items():
+                if key in {"note","description"}: continue
+                actual=attrs.get(key)
+                if isinstance(required,list):
+                    if actual not in required: unmet.append(f"{key} not supported")
+                elif actual != required:
+                    unmet.append(f"{key} mismatch")
+            if unmet:
+                excluded.append({"case_ref":case["case_ref"],"resource_ref":resource["resource_ref"],"reasons":unmet})
+                continue
             same_locality = _distance_proxy(case["locality"],resource["locality"]) == 0
-            fit = 1.0 if same_locality else 0.65
+            case_coords=constraints.get("coordinates") or constraints.get("location_coordinates")
+            res_coords=attrs.get("coordinates") or attrs.get("location_coordinates")
+            distance_km=None
+            try:
+                from .phase2 import haversine_km
+                distance_km=haversine_km(case_coords,res_coords)
+            except Exception: pass
+            fit = 1.0 if same_locality else (max(0.0,1.0-distance_km/50) if distance_km is not None else 0.65)
             trust = 1.0 if resource["verified"] else 0.55
             capacity_fit = min(1.0,resource["remaining"]/max(case["demand_units"],0.001))
             score = 100*(0.40*(case["urgency"]/5)+0.25*(case["vulnerability"]/100)+0.20*fit+0.10*trust+0.05*capacity_fit)
-            rationale=[f"Same district: {case['district']}","Need/resource types match",f"Locality match: {'yes' if same_locality else 'no; coarse district-level candidate'}",f"Provider verification: {'verified' if resource['verified'] else 'not yet verified'}",f"Capacity available: {resource['remaining']} {resource['unit']}"]
+            rationale=[f"Same district: {case['district']}","Need/resource types match",(f"Haversine distance: {distance_km:.2f} km" if distance_km is not None else f"Locality match: {'yes' if same_locality else 'no; distance not geocoded'}"),f"Provider verification: {'verified' if resource['verified'] else 'not yet verified'}",f"Capacity available: {resource['remaining']} {resource['unit']}"]
             candidates.append((score,resource,rationale))
         candidates.sort(key=lambda x:x[0],reverse=True)
         for score,res,rationale in candidates[:3]:
@@ -653,9 +700,9 @@ def generate_matches(user=Depends(get_user)):
             with db() as c:
                 cur=c.execute("""INSERT INTO district_matches(owner_id,case_id,resource_id,recommended_units,score,rationale,created_at)
                     VALUES(?,?,?,?,?,?,?)""",(user["id"],case["id"],res["id"],units,round(score,2),json.dumps(rationale),_now()))
-                made.append({"match_id":cur.lastrowid,"case_ref":case["case_ref"],"resource_ref":res["resource_ref"],"score":round(score,2),"recommended_units":units,"rationale":rationale})
-    _district_audit(user["id"],"matches_generated",{"candidate_matches":len(made),"method":"transparent rule-based ranking v0.3"})
-    return {"count":len(made),"notice":"Recommendations only. Scores are prioritisation aids, not eligibility decisions. Verify need, provider, capacity and logistics; human approval is mandatory.","matches":made}
+            made.append({"match_id":cur.lastrowid,"case_ref":case["case_ref"],"resource_ref":res["resource_ref"],"score":round(score,2),"recommended_units":units,"rationale":rationale})
+    _district_audit(user["id"],"matches_generated",{"candidate_matches":len(made),"constraint_exclusions":len(excluded),"method":"transparent rule-based ranking v0.4"})
+    return {"count":len(made),"constraint_exclusions":excluded,"notice":"Recommendations only. Scores are prioritisation aids, not eligibility decisions. Case preferences are treated as hard constraints where provider attributes are supplied; human approval is mandatory.","matches":made}
 
 @app.get("/api/district/matches")
 def list_district_matches(user=Depends(get_user)):
@@ -740,6 +787,57 @@ def resolve_complaint(complaint_id:int,body:ComplaintResolve,user=Depends(get_us
     with db() as c:c.execute("UPDATE district_complaints SET status=?,resolution=?,updated_at=? WHERE id=?",(body.status,body.resolution,_now(),complaint_id))
     _district_audit(user["id"],"complaint_resolution",{"complaint_id":complaint_id,"status":body.status,"resolution":body.resolution})
     return _owned_row("district_complaints",complaint_id,user["id"])
+
+@app.get("/api/district/intelligence/silent-exclusion")
+def silent_exclusion(user=Depends(get_user), vulnerability_threshold:int=Query(default=75,ge=0,le=100)):
+    """Flag high-vulnerability localities with relatively few recorded cases; proxy only."""
+    with db() as c:
+        rows=[dict(r) for r in c.execute("SELECT district,locality,COUNT(*) cases,AVG(vulnerability) avg_vulnerability,SUM(demand_units) demand FROM district_cases WHERE owner_id=? GROUP BY district,locality",(user["id"],)).fetchall()]
+    if not rows: return {"flags":[],"notice":"No case records available. This is a records-based signal, not proof of exclusion."}
+    total=sum(r["cases"] for r in rows); avg=total/len(rows)
+    flags=[r for r in rows if r["avg_vulnerability"]>=vulnerability_threshold and r["cases"]<avg]
+    return {"flags":flags,"method":{"case_count_mean":round(avg,2),"threshold":vulnerability_threshold},"notice":"Silent-exclusion flags are exploratory proxies: low recorded demand can reflect under-reporting, access barriers or data gaps. Do not treat them as population prevalence or eligibility decisions."}
+
+@app.get("/api/district/intelligence/provider-leakage")
+def provider_leakage(user=Depends(get_user)):
+    with db() as c:
+        rows=[dict(r) for r in c.execute("""SELECT re.id resource_id,re.resource_ref,COUNT(d.id) deliveries,
+          SUM(d.dispatched_units) dispatched,SUM(COALESCE(d.received_units,0)) received,
+          SUM(CASE WHEN d.status='discrepancy' THEN 1 ELSE 0 END) discrepancies
+          FROM district_resources re LEFT JOIN district_matches m ON m.resource_id=re.id
+          LEFT JOIN district_deliveries d ON d.match_id=m.id AND d.owner_id=re.owner_id
+          WHERE re.owner_id=? GROUP BY re.id,re.resource_ref""",(user["id"],)).fetchall()]
+    flags=[]
+    for r in rows:
+        shortfall=float(r["dispatched"] or 0)-float(r["received"] or 0)
+        if r["discrepancies"] or shortfall>1e-9:
+            flags.append({**r,"shortfall_units":round(shortfall,2),"flag":"receipt discrepancy; verify evidence and context"})
+    return {"flags":flags,"notice":"Anomaly flags are triage signals, not allegations of misconduct. Investigate with evidence and due process."}
+
+@app.get("/api/district/matches/{match_id}/why-not")
+def match_counterfactual(match_id:int,user=Depends(get_user)):
+    m=_owned_row("district_matches",match_id,user["id"])
+    case=_owned_row("district_cases",m["case_id"],user["id"])
+    with db() as c:
+        rows=c.execute("""SELECT re.* FROM district_resources re WHERE re.owner_id=? AND re.district=? AND re.resource_type=? AND re.status='active' ORDER BY re.id""",(user["id"],case["district"],case["need_type"])).fetchall()
+    target=next((dict(r) for r in rows if r["id"]==m["resource_id"]),None)
+    if target is None: raise HTTPException(404,"Provider candidate not found")
+    alternatives=[]
+    for r in rows:
+        if r["id"]==target["id"]: continue
+        locality=_distance_proxy(case["locality"],r["locality"])
+        verified=int(r["verified"]); cap=min(1,float(r["remaining"])/max(float(case["demand_units"]),.001))
+        distance_km=None
+        try:
+            from .phase2 import haversine_km
+            coords=json.loads(case.get("constraints_json") or "{}").get("coordinates")
+            provider_coords=json.loads(r.get("attributes_json") or "{}").get("coordinates")
+            distance_km=haversine_km(coords,provider_coords)
+        except Exception: pass
+        distance_fit=max(0.0,1-distance_km/50) if distance_km is not None else (1 if locality==0 else .65)
+        score=100*(.40*(case["urgency"]/5)+.25*(case["vulnerability"]/100)+.20*distance_fit+.10*(1 if verified else .55)+.05*cap)
+        alternatives.append({"provider_ref":r["resource_ref"],"score":round(score,2),"score_delta_vs_selected":round(score-float(m["score"]),2),"locality_match":locality==0,"distance_km":round(distance_km,2) if distance_km is not None else None,"verified":bool(verified),"capacity":r["remaining"],"explanation":"Candidate comparison only; distance uses Haversine where coordinates are supplied. Availability and policy constraints may change."})
+    return {"selected_provider":target["resource_ref"],"selected_score":m["score"],"alternatives":sorted(alternatives,key=lambda x:x["score"],reverse=True),"notice":"Counterfactual explanation of the ranking formula; not a guarantee that an alternative is appropriate."}
 
 @app.get("/api/district/impact")
 def district_impact(user=Depends(get_user)):
