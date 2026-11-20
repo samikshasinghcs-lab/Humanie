@@ -714,6 +714,9 @@ def list_district_matches(user=Depends(get_user)):
 @app.post("/api/district/matches/{match_id}/decision")
 def decide_match(match_id:int,body:MatchDecision,user=Depends(get_user)):
     m=_owned_row("district_matches",match_id,user["id"])
+    with db() as c:
+        shared=c.execute("SELECT 1 FROM district_workspace_cases wc JOIN district_workspaces w ON w.id=wc.workspace_id WHERE wc.case_id=? LIMIT 1",(m["case_id"],)).fetchone()
+    if shared: raise HTTPException(409,"This match is governed by an independent workspace review. Use the v1 Independent review workflow.")
     if m["status"]!="recommended": raise HTTPException(409,"Match has already been decided")
     if body.decision=="reject":
         with db() as c:c.execute("UPDATE district_matches SET status='rejected',decided_at=? WHERE id=?",(_now(),match_id))
@@ -961,10 +964,18 @@ def v1_match_decision(workspace_id:int,match_id:int,body:DecisionActionInput,use
         existing=c.execute('SELECT id FROM district_decision_actions WHERE workspace_id=? AND match_id=?',(workspace_id,match_id)).fetchone()
         if existing: raise HTTPException(409,'A decision has already been recorded for this match')
         c.execute('INSERT INTO district_decision_actions(workspace_id,match_id,approver_id,action,notes,created_at) VALUES(?,?,?,?,?,?)',(workspace_id,match_id,user['id'],body.action,body.notes.strip(),datetime.now(timezone.utc).isoformat()))
+        if match['status']!='recommended': raise HTTPException(409,'Match is no longer awaiting decision')
         if body.action=='approve':
-            c.execute('UPDATE district_matches SET status=? WHERE id=? AND owner_id=?',('approved',match_id,match['owner_id']))
+            case=c.execute('SELECT demand_units FROM district_cases WHERE id=? AND owner_id=?',(match['case_id'],match['owner_id'])).fetchone()
+            resource=c.execute('SELECT remaining FROM district_resources WHERE id=? AND owner_id=?',(match['resource_id'],match['owner_id'])).fetchone()
+            if not case or not resource: raise HTTPException(404,'Case or resource not found')
+            already=c.execute("SELECT COALESCE(SUM(recommended_units),0) n FROM district_matches WHERE owner_id=? AND case_id=? AND status='approved'",(match['owner_id'],match['case_id'])).fetchone()['n']
+            qty=float(match['recommended_units'])
+            if qty>max(0,float(case['demand_units'])-float(already)) or qty>float(resource['remaining']): raise HTTPException(409,'Capacity or demand changed; regenerate recommendations')
+            c.execute('UPDATE district_resources SET remaining=remaining-?,updated_at=? WHERE id=? AND owner_id=?',(qty,datetime.now(timezone.utc).isoformat(),match['resource_id'],match['owner_id']))
+            c.execute('UPDATE district_matches SET status=?,decided_at=? WHERE id=? AND owner_id=?',('approved',datetime.now(timezone.utc).isoformat(),match_id,match['owner_id']))
         else:
-            c.execute('UPDATE district_matches SET status=? WHERE id=? AND owner_id=?',('rejected',match_id,match['owner_id']))
+            c.execute('UPDATE district_matches SET status=?,decided_at=? WHERE id=? AND owner_id=?',('rejected',datetime.now(timezone.utc).isoformat(),match_id,match['owner_id']))
     V1_LEDGER.append('MATCH_DECISION',str(match_id),str(user['id']),role,{'action':body.action,'workspace_id':workspace_id,'reviewer_id':review['reviewer_id']})
     audit(user['id'],'v1_match_decision',json.dumps({'match_id':match_id,'workspace_id':workspace_id,'action':body.action}))
     return {'action':body.action,'approver_id':user['id'],'reviewer_id':review['reviewer_id'],'status':body.action}
