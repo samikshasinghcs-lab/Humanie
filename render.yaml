@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: humanie-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /
+    envVars:
+      - key: HUMANIE_SECRET_KEY
+        generateValue: true
+      - key: HUMANIE_DB_PATH
+        value: /tmp/humanie.db
