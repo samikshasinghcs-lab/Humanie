@@ -903,6 +903,13 @@ def v1_workspace_add_member(workspace_id:int,body:WorkspaceMemberAdd,user=Depend
     role=workspace_role(workspace_id,user['id'])
     if role not in ('owner','approver'): raise HTTPException(403,'Workspace owner or approver role required')
     email=body.email.strip().lower()
+    if email == user['email'].strip().lower(): raise HTTPException(422,'You cannot assign a workspace role to yourself')
+    with db() as c:
+        owner=c.execute('SELECT owner_id FROM district_workspaces WHERE id=?',(workspace_id,)).fetchone()
+        if not owner: raise HTTPException(404,'Workspace not found')
+        existing_owner=c.execute('SELECT user_id FROM district_workspace_members WHERE workspace_id=? AND role=\'owner\'',(workspace_id,)).fetchone()
+        if existing_owner and existing_owner['user_id'] != owner['owner_id']: raise HTTPException(409,'Workspace owner membership is inconsistent')
+    email=body.email.strip().lower()
     with db() as c:
         target=c.execute('SELECT id FROM users WHERE email=? AND is_active=1',(email,)).fetchone()
         if not target: raise HTTPException(404,'Invitee must register an account first')
@@ -933,9 +940,9 @@ def v1_workspaces_list(user=Depends(get_user)):
 @app.post('/api/v1/workspaces/{workspace_id}/matches/{match_id}/review')
 def v1_match_review(workspace_id:int,match_id:int,body:DecisionReviewInput,user=Depends(get_user)):
     role=workspace_role(workspace_id,user['id'])
-    if role not in ('reviewer','owner'): raise HTTPException(403,'Reviewer or owner role required')
+    if role != 'reviewer': raise HTTPException(403,'Reviewer role required; owners must be separately assigned reviewer role')
     match=workspace_case_match(workspace_id,match_id)
-    if match['owner_id']!=user['id'] and role=='owner': pass
+    
     with db() as c:
         c.execute('INSERT INTO district_decision_reviews(workspace_id,match_id,reviewer_id,review_status,notes,created_at) VALUES(?,?,?,?,?,?)',(workspace_id,match_id,user['id'],body.status,body.notes.strip(),datetime.now(timezone.utc).isoformat()))
     V1_LEDGER.append('MATCH_REVIEW',str(match_id),str(user['id']),role,{'status':body.status,'notes':body.notes.strip(),'workspace_id':workspace_id})
