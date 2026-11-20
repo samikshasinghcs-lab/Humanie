@@ -36,51 +36,8 @@ TOKEN_MINUTES = 60 * 8
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
-app = FastAPI(title="HUMANIE Intelligence API", version="1.0.0")
+app = FastAPI(title="HUMANIE Intelligence API", version="0.9.0")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
-# HUMANIE v1.0: fairness, sensitivity and tamper-evident audit utilities
-from app.extraordinary_upgrade import AuditLedger, Community, allocation as floor_allocation, sensitivity as weight_sensitivity
-
-V1_LEDGER = AuditLedger(str(ROOT / "data" / "humanie_audit_chain.db"))
-
-class FloorAllocationRequest(BaseModel):
-    communities: list[dict] = Field(min_length=1, max_length=100)
-    stock: float = Field(gt=0, le=1_000_000_000)
-    transport_budget: float = Field(gt=0, le=1_000_000_000)
-    floor: float = Field(ge=0, le=1)
-
-class SensitivityRequest(BaseModel):
-    candidates: list[dict] = Field(min_length=2, max_length=100)
-    weights: dict[str, float]
-    noise: float = Field(default=0.30, ge=0, le=1)
-    draws: int = Field(default=200, ge=10, le=10000)
-
-@app.post("/api/v1/evaluation/floor-allocation")
-def v1_floor_allocation(body: FloorAllocationRequest, user=Depends(get_user)):
-    try:
-        nodes=[Community(name=str(x["name"]), demand=float(x["demand"]), vulnerability=float(x["vulnerability"]), transport_cost=float(x["transport_cost"])) for x in body.communities]
-    except (KeyError, TypeError, ValueError):
-        raise HTTPException(422,"Each community requires name, demand, vulnerability and transport_cost.")
-    result=floor_allocation(nodes,body.stock,body.transport_budget,body.floor)
-    audit(user["id"],"v1_floor_allocation",json.dumps({"feasible":result.get("feasible"),"floor":body.floor}))
-    return result
-
-@app.post("/api/v1/evaluation/weight-sensitivity")
-def v1_weight_sensitivity(body: SensitivityRequest, user=Depends(get_user)):
-    if not body.weights or any(not isinstance(v,(int,float)) or v<0 for v in body.weights.values()):
-        raise HTTPException(422,"Weights must be a non-empty mapping of non-negative numeric values.")
-    if any(not all(k in candidate for k in body.weights) or "id" not in candidate for candidate in body.candidates):
-        raise HTTPException(422,"Each candidate must contain an id and every scored weight key.")
-    result=weight_sensitivity(body.candidates,body.weights,body.noise,body.draws)
-    audit(user["id"],"v1_weight_sensitivity",json.dumps({"draws":body.draws,"stability":result.get("top1_stability_pct")}))
-    return result
-
-@app.get("/api/v1/audit-chain/verify")
-def v1_audit_verify(user=Depends(get_user)):
-    result=V1_LEDGER.verify()
-    audit(user["id"],"v1_audit_chain_verify",json.dumps(result))
-    return result
-
 
 # Simple in-memory rate limiter for demo protection. Use a gateway/WAF in production.
 RATE: dict[str, list[float]] = {}
@@ -207,7 +164,7 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status":"ok","version":"1.0.0","secret_configured":SECRET != "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME"}
+    return {"status":"ok","version":"0.9.0","secret_configured":SECRET != "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME"}
 
 @app.post("/api/auth/register", dependencies=[Depends(rate_limit)])
 def register(body: Register):
@@ -714,9 +671,6 @@ def list_district_matches(user=Depends(get_user)):
 @app.post("/api/district/matches/{match_id}/decision")
 def decide_match(match_id:int,body:MatchDecision,user=Depends(get_user)):
     m=_owned_row("district_matches",match_id,user["id"])
-    with db() as c:
-        shared=c.execute("SELECT 1 FROM district_workspace_cases wc JOIN district_workspaces w ON w.id=wc.workspace_id WHERE wc.case_id=? LIMIT 1",(m["case_id"],)).fetchone()
-    if shared: raise HTTPException(409,"This match is governed by an independent workspace review. Use the v1 Independent review workflow.")
     if m["status"]!="recommended": raise HTTPException(409,"Match has already been decided")
     if body.decision=="reject":
         with db() as c:c.execute("UPDATE district_matches SET status='rejected',decided_at=? WHERE id=?",(_now(),match_id))
@@ -829,153 +783,3 @@ def seed_district_demo(user=Depends(get_user)):
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(user["id"],x[0],x[1],x[2],x[3],x[4],x[5],x[5],x[6],x[7],x[8],now,now))
     _district_audit(user["id"],"fictional_demo_seeded",{"cases":3,"resources":3,"notice":"fictional data; not field evidence"})
     return {"status":"seeded","cases":3,"resources":3,"notice":"All inserted records are fictional demonstration data, not verified people, providers or field data."}
-
-# Server-side workspace roles and separation-of-duties for allocation decisions
-
-def init_review_workspace_tables():
-    with db() as c:
-        c.execute("""CREATE TABLE IF NOT EXISTS district_workspaces(
-            id INTEGER PRIMARY KEY, owner_id INTEGER NOT NULL, name TEXT NOT NULL,
-            created_at TEXT NOT NULL)""")
-        c.execute("""CREATE TABLE IF NOT EXISTS district_workspace_members(
-            workspace_id INTEGER NOT NULL, user_id INTEGER NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('owner','reviewer','approver','operator','viewer')),
-            added_by INTEGER NOT NULL, added_at TEXT NOT NULL,
-            PRIMARY KEY(workspace_id,user_id),
-            FOREIGN KEY(workspace_id) REFERENCES district_workspaces(id),
-            FOREIGN KEY(user_id) REFERENCES users(id))""")
-        c.execute("""CREATE TABLE IF NOT EXISTS district_workspace_cases(
-            workspace_id INTEGER NOT NULL, case_id INTEGER NOT NULL,
-            added_by INTEGER NOT NULL, added_at TEXT NOT NULL,
-            PRIMARY KEY(workspace_id,case_id))""")
-        c.execute("""CREATE TABLE IF NOT EXISTS district_decision_reviews(
-            id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, match_id INTEGER NOT NULL,
-            reviewer_id INTEGER NOT NULL, review_status TEXT NOT NULL CHECK(review_status IN ('approved','rejected','needs_changes')),
-            notes TEXT NOT NULL, created_at TEXT NOT NULL,
-            UNIQUE(workspace_id,match_id,reviewer_id))""")
-        c.execute("""CREATE TABLE IF NOT EXISTS district_decision_actions(
-            id INTEGER PRIMARY KEY, workspace_id INTEGER NOT NULL, match_id INTEGER NOT NULL,
-            approver_id INTEGER NOT NULL, action TEXT NOT NULL CHECK(action IN ('approve','reject')),
-            notes TEXT NOT NULL, created_at TEXT NOT NULL,
-            UNIQUE(workspace_id,match_id))""")
-
-@app.on_event('startup')
-def init_review_workspace_on_startup():
-    init_review_workspace_tables()
-
-class WorkspaceCreate(BaseModel):
-    name: str = Field(min_length=2,max_length=120)
-
-class WorkspaceMemberAdd(BaseModel):
-    email: str = Field(min_length=5,max_length=254)
-    role: str = Field(pattern='^(reviewer|approver|operator|viewer)$')
-
-class DecisionReviewInput(BaseModel):
-    status: str = Field(pattern='^(approved|rejected|needs_changes)$')
-    notes: str = Field(min_length=5,max_length=2000)
-
-class DecisionActionInput(BaseModel):
-    action: str = Field(pattern='^(approve|reject)$')
-    notes: str = Field(min_length=5,max_length=2000)
-
-
-def workspace_role(workspace_id:int,user_id:int):
-    with db() as c:
-        row=c.execute('SELECT role FROM district_workspace_members WHERE workspace_id=? AND user_id=?',(workspace_id,user_id)).fetchone()
-    return row['role'] if row else None
-
-def workspace_case_match(workspace_id:int,match_id:int):
-    with db() as c:
-        row=c.execute('''SELECT m.* FROM district_matches m JOIN district_workspace_cases wc ON wc.case_id=m.case_id
-                         WHERE wc.workspace_id=? AND m.id=?''',(workspace_id,match_id)).fetchone()
-    if not row: raise HTTPException(404,'Match not found in this workspace')
-    return dict(row)
-
-@app.post('/api/v1/workspaces')
-def v1_workspace_create(body:WorkspaceCreate,user=Depends(get_user)):
-    now=datetime.now(timezone.utc).isoformat()
-    with db() as c:
-        cur=c.execute('INSERT INTO district_workspaces(owner_id,name,created_at) VALUES(?,?,?)',(user['id'],body.name.strip(),now))
-        wid=cur.lastrowid
-        c.execute('INSERT INTO district_workspace_members VALUES(?,?,?,?,?)',(wid,user['id'],'owner',user['id'],now))
-    V1_LEDGER.append('WORKSPACE_CREATED',str(wid),str(user['id']),'owner',{'name':body.name.strip()})
-    return {'workspace_id':wid,'name':body.name.strip()}
-
-@app.post('/api/v1/workspaces/{workspace_id}/members')
-def v1_workspace_add_member(workspace_id:int,body:WorkspaceMemberAdd,user=Depends(get_user)):
-    role=workspace_role(workspace_id,user['id'])
-    if role not in ('owner','approver'): raise HTTPException(403,'Workspace owner or approver role required')
-    email=body.email.strip().lower()
-    if email == user['email'].strip().lower(): raise HTTPException(422,'You cannot assign a workspace role to yourself')
-    with db() as c:
-        owner=c.execute('SELECT owner_id FROM district_workspaces WHERE id=?',(workspace_id,)).fetchone()
-        if not owner: raise HTTPException(404,'Workspace not found')
-        existing_owner=c.execute('SELECT user_id FROM district_workspace_members WHERE workspace_id=? AND role=\'owner\'',(workspace_id,)).fetchone()
-        if existing_owner and existing_owner['user_id'] != owner['owner_id']: raise HTTPException(409,'Workspace owner membership is inconsistent')
-    email=body.email.strip().lower()
-    with db() as c:
-        target=c.execute('SELECT id FROM users WHERE email=? AND is_active=1',(email,)).fetchone()
-        if not target: raise HTTPException(404,'Invitee must register an account first')
-        tid=target['id']
-        c.execute('INSERT OR REPLACE INTO district_workspace_members(workspace_id,user_id,role,added_by,added_at) VALUES(?,?,?,?,?)',(workspace_id,tid,body.role,user['id'],datetime.now(timezone.utc).isoformat()))
-    V1_LEDGER.append('MEMBER_ROLE_ASSIGNED',str(workspace_id),str(user['id']),role,{'member_id':tid,'role':body.role})
-    return {'workspace_id':workspace_id,'member_id':tid,'role':body.role}
-
-@app.post('/api/v1/workspaces/{workspace_id}/cases/{case_id}')
-def v1_workspace_share_case(workspace_id:int,case_id:int,user=Depends(get_user)):
-    role=workspace_role(workspace_id,user['id'])
-    if role not in ('owner','approver'): raise HTTPException(403,'Workspace owner or approver role required')
-    with db() as c:
-        owned=c.execute('SELECT id FROM district_cases WHERE id=? AND owner_id=?',(case_id,user['id'])).fetchone()
-        if not owned: raise HTTPException(404,'Case not found or not owned by caller')
-        c.execute('INSERT OR IGNORE INTO district_workspace_cases VALUES(?,?,?,?)',(workspace_id,case_id,user['id'],datetime.now(timezone.utc).isoformat()))
-    V1_LEDGER.append('CASE_SHARED',str(case_id),str(user['id']),role,{'workspace_id':workspace_id})
-    return {'workspace_id':workspace_id,'case_id':case_id,'shared':True}
-
-@app.get('/api/v1/workspaces')
-def v1_workspaces_list(user=Depends(get_user)):
-    with db() as c:
-        rows=c.execute('''SELECT w.id,w.name,m.role,w.created_at FROM district_workspaces w
-                         JOIN district_workspace_members m ON m.workspace_id=w.id
-                         WHERE m.user_id=? ORDER BY w.id''',(user['id'],)).fetchall()
-    return {'workspaces':[dict(r) for r in rows]}
-
-@app.post('/api/v1/workspaces/{workspace_id}/matches/{match_id}/review')
-def v1_match_review(workspace_id:int,match_id:int,body:DecisionReviewInput,user=Depends(get_user)):
-    role=workspace_role(workspace_id,user['id'])
-    if role != 'reviewer': raise HTTPException(403,'Reviewer role required; owners must be separately assigned reviewer role')
-    match=workspace_case_match(workspace_id,match_id)
-    
-    with db() as c:
-        c.execute('INSERT INTO district_decision_reviews(workspace_id,match_id,reviewer_id,review_status,notes,created_at) VALUES(?,?,?,?,?,?)',(workspace_id,match_id,user['id'],body.status,body.notes.strip(),datetime.now(timezone.utc).isoformat()))
-    V1_LEDGER.append('MATCH_REVIEW',str(match_id),str(user['id']),role,{'status':body.status,'notes':body.notes.strip(),'workspace_id':workspace_id})
-    audit(user['id'],'v1_match_review',json.dumps({'match_id':match_id,'workspace_id':workspace_id,'status':body.status}))
-    return {'review_status':body.status,'reviewer_id':user['id']}
-
-@app.post('/api/v1/workspaces/{workspace_id}/matches/{match_id}/decision')
-def v1_match_decision(workspace_id:int,match_id:int,body:DecisionActionInput,user=Depends(get_user)):
-    role=workspace_role(workspace_id,user['id'])
-    if role not in ('approver','owner'): raise HTTPException(403,'Approver or owner role required')
-    match=workspace_case_match(workspace_id,match_id)
-    with db() as c:
-        review=c.execute('''SELECT * FROM district_decision_reviews WHERE workspace_id=? AND match_id=?
-                           AND review_status='approved' AND reviewer_id<>? ORDER BY id DESC LIMIT 1''',(workspace_id,match_id,user['id'])).fetchone()
-        if not review: raise HTTPException(409,'An independent reviewer approval is required before this decision')
-        existing=c.execute('SELECT id FROM district_decision_actions WHERE workspace_id=? AND match_id=?',(workspace_id,match_id)).fetchone()
-        if existing: raise HTTPException(409,'A decision has already been recorded for this match')
-        c.execute('INSERT INTO district_decision_actions(workspace_id,match_id,approver_id,action,notes,created_at) VALUES(?,?,?,?,?,?)',(workspace_id,match_id,user['id'],body.action,body.notes.strip(),datetime.now(timezone.utc).isoformat()))
-        if match['status']!='recommended': raise HTTPException(409,'Match is no longer awaiting decision')
-        if body.action=='approve':
-            case=c.execute('SELECT demand_units FROM district_cases WHERE id=? AND owner_id=?',(match['case_id'],match['owner_id'])).fetchone()
-            resource=c.execute('SELECT remaining FROM district_resources WHERE id=? AND owner_id=?',(match['resource_id'],match['owner_id'])).fetchone()
-            if not case or not resource: raise HTTPException(404,'Case or resource not found')
-            already=c.execute("SELECT COALESCE(SUM(recommended_units),0) n FROM district_matches WHERE owner_id=? AND case_id=? AND status='approved'",(match['owner_id'],match['case_id'])).fetchone()['n']
-            qty=float(match['recommended_units'])
-            if qty>max(0,float(case['demand_units'])-float(already)) or qty>float(resource['remaining']): raise HTTPException(409,'Capacity or demand changed; regenerate recommendations')
-            c.execute('UPDATE district_resources SET remaining=remaining-?,updated_at=? WHERE id=? AND owner_id=?',(qty,datetime.now(timezone.utc).isoformat(),match['resource_id'],match['owner_id']))
-            c.execute('UPDATE district_matches SET status=?,decided_at=? WHERE id=? AND owner_id=?',('approved',datetime.now(timezone.utc).isoformat(),match_id,match['owner_id']))
-        else:
-            c.execute('UPDATE district_matches SET status=?,decided_at=? WHERE id=? AND owner_id=?',('rejected',datetime.now(timezone.utc).isoformat(),match_id,match['owner_id']))
-    V1_LEDGER.append('MATCH_DECISION',str(match_id),str(user['id']),role,{'action':body.action,'workspace_id':workspace_id,'reviewer_id':review['reviewer_id']})
-    audit(user['id'],'v1_match_decision',json.dumps({'match_id':match_id,'workspace_id':workspace_id,'action':body.action}))
-    return {'action':body.action,'approver_id':user['id'],'reviewer_id':review['reviewer_id'],'status':body.action}

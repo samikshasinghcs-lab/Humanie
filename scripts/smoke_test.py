@@ -1,29 +1,17 @@
-"""HUMANIE API smoke checks; run from project root: python scripts/smoke_test.py"""
+"""HUMANIE v0.9 smoke checks. Run from project root: python scripts/smoke_test.py"""
 from pathlib import Path
-import tempfile
 import sys
-import os
-
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-_tmp = tempfile.TemporaryDirectory(prefix="humanie-smoke-")
-os.environ["HUMANIE_DB_PATH"] = str(Path(_tmp.name) / "smoke.sqlite3")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fastapi.testclient import TestClient
 from app.main import app
-
 client = TestClient(app)
-email = "smoke-test@example.invalid"
+email = "smoke-v07@example.invalid"
 password = "LocalOnly-Test-Password-123!"
-health = client.get("/api/health")
-assert health.status_code == 200 and health.json().get("status") == "ok"
-register = client.post("/api/auth/register", json={"email": email, "password": password})
-if register.status_code == 409:
-    register = client.post("/api/auth/token", data={"username": email, "password": password})
-assert register.status_code == 200, register.text
-headers = {"Authorization": f"Bearer {register.json()['access_token']}"}
-headers_response = client.get("/")
-for name in ("X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy", "Content-Security-Policy"):
-    assert name in headers_response.headers, f"Missing header: {name}"
+r = client.post("/api/auth/register", json={"email": email, "password": password})
+if r.status_code == 409:
+    r = client.post("/api/auth/token", data={"username": email, "password": password})
+assert r.status_code == 200, r.text
+headers = {"Authorization": f"Bearer {r.json()['access_token']}"}
 for scenario in ("urban", "rural", "low_capacity"):
     response = client.get(f"/api/evaluation/allocation?scenario={scenario}&floor_pct=30", headers=headers)
     assert response.status_code == 200, response.text
@@ -35,5 +23,4 @@ for scenario in ("urban", "rural", "low_capacity"):
     for policy in ("baseline", "unconstrained", "floored"):
         assert data[policy]["allocated_units"] <= data["constraints"]["available_stock_units"] + 1e-5
         assert data[policy]["transport_cost"] <= data["constraints"]["transport_budget_cost_units"] + 1e-5
-print("HUMANIE API smoke checks passed for auth, headers, three scenarios, and floor sweeps.")
-_tmp.cleanup()
+print("HUMANIE v0.9 API smoke checks passed for all three scenarios and floor sweeps.")
