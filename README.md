@@ -1,4 +1,4 @@
-# HUMANIE v0.9 — Datanova Evaluation & District Operations Demonstrator
+# HUMANIE v0.9 — District Evaluation & Operations Demonstrator
 
 **Intelligence for humanity.** This release packages the district workflow demonstrator with an end-to-end district workflow: pseudonymous need intake, provider/resource registration, explainable candidate matching, mandatory human approval, dispatch and receipt confirmation, complaints, audit events and operational outcome reporting.
 
@@ -120,20 +120,9 @@ python scripts/fetch_world_bank.py
 
 **Status:** Research and operational workflow demonstrator. Not certified, not production-ready and not authorised to administer public benefits.
 
-
-## Datanova live walkthrough (66 seconds)
-
-1. Open `/district`, create/sign into a local workspace and load fictional demo records.
-2. Show the case and provider lists; generate candidate matches.
-3. Open Matching & approval. Explain the recommendation factors and record a human approval/rejection reason. Repeat for one Jobs case (skills fit, attach support) and one Education case (scholarship or training place) so all three domains are visibly covered.
-4. Record a dispatch and confirm receipt; point out quantity discrepancies and the complaint/audit tabs.
-5. Open Evaluation Lab. Run Urban, Rural and Low-capacity profiles. Show the 0% minimum coverage of the unconstrained LP and compare it with the configurable floor (default 30%).
-6. Explain that the floor is a policy choice to be validated with affected communities, not a mathematical proof of fairness.
-
-### Important comparison caveat
+## Important comparison caveat
 
 The proportional baseline is a policy comparator, not a same-throughput optimum. It may leave stock unused because the transport budget binds while preserving equal percentage coverage. The two LP policies may use more stock under the same transport budget by changing the allocation pattern. The deck and API report stock utilisation so this is visible rather than hidden.
-
 
 ## v0.6 — Fairness–efficiency floor sweep
 
@@ -164,7 +153,6 @@ The proportional baseline gives each community the same percentage coverage, so 
 
 Use `DEMO_WALKTHROUGH.md`. Record the workflow sequence before the event; do not rely on an untested live connection.
 
-
 ## v0.7 — baseline-anchored floor sweep and release consistency
 - Release labels aligned to v0.7; API metadata and health endpoint report 0.7.0.
 - Floor-sweep CSV and chart include proportional-baseline reference values.
@@ -173,7 +161,6 @@ Use `DEMO_WALKTHROUGH.md`. Record the workflow sequence before the event; do not
 - Synthetic rural 40% floor: 41.03% vulnerability-weighted coverage; 40.00% minimum community coverage. Proportional baseline: 40.59% weighted and minimum coverage.
 - Feasibility gate before any field pilot: partner agreement, legal review, privacy impact assessment, and supervised field test.
 - No signed partners, live integrations, or proven impact are claimed.
-
 
 ## v0.9 — final presentation and release cleanup
 - API metadata and health endpoint report 0.9.0.
