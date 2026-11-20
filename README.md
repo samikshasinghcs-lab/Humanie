@@ -1,4 +1,4 @@
-# HUMANIE v0.9 — Datanova Evaluation & District Operations Demonstrator
+# HUMANIE v0.9 — District Evaluation & Operations Demonstrator
 
 **Intelligence for humanity.** This release packages the district workflow demonstrator with an end-to-end district workflow: pseudonymous need intake, provider/resource registration, explainable candidate matching, mandatory human approval, dispatch and receipt confirmation, complaints, audit events and operational outcome reporting.
 
@@ -121,7 +121,7 @@ python scripts/fetch_world_bank.py
 **Status:** Research and operational workflow demonstrator. Not certified, not production-ready and not authorised to administer public benefits.
 
 
-## Datanova live walkthrough (66 seconds)
+## HUMANIE live walkthrough (66 seconds)
 
 1. Open `/district`, create/sign into a local workspace and load fictional demo records.
 2. Show the case and provider lists; generate candidate matches.
