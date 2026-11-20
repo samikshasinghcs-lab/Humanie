@@ -36,7 +36,7 @@ TOKEN_MINUTES = 60 * 8
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
-app = FastAPI(title="HUMANIE Intelligence API", version="0.9.0")
+app = FastAPI(title="HUMANIE Intelligence API", version="1.0.0")
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 # HUMANIE v1.0: fairness, sensitivity and tamper-evident audit utilities
 from app.extraordinary_upgrade import AuditLedger, Community, allocation as floor_allocation, sensitivity as weight_sensitivity
@@ -207,7 +207,7 @@ def home():
 
 @app.get("/api/health")
 def health():
-    return {"status":"ok","version":"0.9.0","secret_configured":SECRET != "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME"}
+    return {"status":"ok","version":"1.0.0","secret_configured":SECRET != "INSECURE-LOCAL-DEMO-ONLY-CHANGE-ME"}
 
 @app.post("/api/auth/register", dependencies=[Depends(rate_limit)])
 def register(body: Register):
