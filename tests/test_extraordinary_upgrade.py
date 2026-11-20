@@ -1,6 +1,6 @@
 import tempfile, unittest
 from pathlib import Path
-from extraordinary_upgrade import AuditLedger, Governance, Community, allocation, sensitivity
+from app.extraordinary_upgrade import AuditLedger, Governance, Community, allocation, sensitivity
 
 class TestUpgrade(unittest.TestCase):
  def test_chain_and_tamper(self):
