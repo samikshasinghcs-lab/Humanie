@@ -893,3 +893,7 @@ install_domain_workflows(app, db, get_user)
 # Batch 3 governance, Decision Vault and integrity workflows
 from app.governance import install as install_governance
 install_governance(app, db, get_user)
+
+# Batch 4 country packs, interoperability and operational diagnostics
+from app.interoperability import install as install_interoperability
+install_interoperability(app, db, get_user)
