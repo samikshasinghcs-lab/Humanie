@@ -881,3 +881,7 @@ def seed_district_demo(user=Depends(get_user)):
                 VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)""",(user["id"],x[0],x[1],x[2],x[3],x[4],x[5],x[5],x[6],x[7],x[8],now,now))
     _district_audit(user["id"],"fictional_demo_seeded",{"cases":3,"resources":3,"notice":"fictional data; not field evidence"})
     return {"status":"seeded","cases":3,"resources":3,"notice":"All inserted records are fictional demonstration data, not verified people, providers or field data."}
+
+# Batch 1 unified case infrastructure module
+from app.case_infrastructure import install as install_case_infrastructure
+install_case_infrastructure(app, db, get_user)
