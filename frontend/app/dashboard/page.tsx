@@ -227,7 +227,8 @@ export default function HumanieHomePage() {
             >
               04. Global & Hardening
             </button>
-          <a
+          <a href="#computational-core" className="transition-colors whitespace-nowrap shrink-0 pb-0.5 text-emerald-700 font-extrabold hover:text-emerald-900">AI / ML + Optimisation</a>
+<a
               href="/engine"
               className="transition-colors whitespace-nowrap shrink-0 pb-0.5 text-emerald-700 font-semibold hover:text-emerald-900"
             >
