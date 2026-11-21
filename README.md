@@ -2,6 +2,18 @@
 
 **Intelligence for humanity.** This release packages the district workflow demonstrator with an end-to-end district workflow: pseudonymous need intake, provider/resource registration, explainable candidate matching, mandatory human approval, dispatch and receipt confirmation, complaints, audit events and operational outcome reporting.
 
+
+## AI/ML and mathematical optimisation — implemented and inspectable
+
+HUMANIE includes computational components with source code and evaluation outputs—not just AI/ML branding:
+
+- **Exploratory ML:** scikit-learn pipeline (median imputation + Random Forest, 300 trees, max depth 6, minimum leaf size 3) predicts national undernourishment prevalence from lagged country-year features. It uses a chronological holdout and reports MAE and R². It is explicitly exploratory, non-causal, national-level and not used for individual or operational eligibility. Source: [app/main.py](app/main.py).
+- **LP allocation:** SciPy `linprog` with HiGHS optimises weighted allocation subject to stock, transport-budget and demand-cap constraints. Synthetic inputs are disclosed in outputs. Source: [app/main.py](app/main.py).
+- **Policy evaluation:** compares proportional baseline, vulnerability-weighted optimisation and a coverage-floor policy across synthetic scenarios; reports allocation, unmet demand, transport cost and coverage metrics. Floors are policy assumptions, not proof of fairness. Source: [app/phase2.py](app/phase2.py).
+- **Live evidence:** the Next.js Live Engine walkthrough includes matching, a human approval gate, LP fairness-floor runs, audit-chain verification and a safe tamper test.
+
+Explore the AI/ML & optimisation landing-page section (`/#intelligence`) or inspect repository source directly. Synthetic demonstrations are not field evidence or validated impact.
+
 ## Start locally
 
 Python 3.10+ recommended.
