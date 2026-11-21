@@ -3,7 +3,7 @@ name: Integrate HUMANIE Connected Bundle
 on:
   push:
     paths:
-      - ".integration/Humanie-connected.zip"
+      - "Humanie-connected.zip"
       - ".github/workflows/integrate-connected-bundle.yml"
   workflow_dispatch:
 
@@ -20,16 +20,17 @@ jobs:
       - name: Overlay connected bundle onto repository
         run: |
           set -euo pipefail
-          ZIP=".integration/Humanie-connected.zip"
+          ZIP="Humanie-connected.zip"
           if [ ! -f "$ZIP" ]; then
             echo "Bundle ZIP not present; workflow setup only."
             exit 0
           fi
-          mkdir -p /tmp/humanie-unpack /tmp/humanie-overlay
+          mkdir -p /tmp/humanie-unpack
           unzip -q "$ZIP" -d /tmp/humanie-unpack
-          ROOT="$(find /tmp/humanie-unpack -mindepth 1 -maxdepth 1 -type d | head -1)"
-          if [ -z "$ROOT" ]; then ROOT=/tmp/humanie-unpack; fi
-          rsync -a --exclude='.git' "$ROOT/" "$GITHUB_WORKSPACE/"
+          ROOT=/tmp/humanie-unpack
+          TOP="$(find "$ROOT" -mindepth 1 -maxdepth 1 -type d | head -1)"
+          if [ -n "$TOP" ] && [ "$(find "$ROOT" -mindepth 1 -maxdepth 1 | wc -l)" -eq 1 ]; then ROOT="$TOP"; fi
+          rsync -a --exclude='.git' --exclude='Humanie-connected.zip' "$ROOT/" "$GITHUB_WORKSPACE/"
           rm -f "$ZIP"
       - name: Commit integrated files
         run: |
