@@ -885,3 +885,7 @@ def seed_district_demo(user=Depends(get_user)):
 # Batch 1 unified case infrastructure module
 from app.case_infrastructure import install as install_case_infrastructure
 install_case_infrastructure(app, db, get_user)
+
+# Batch 2 domain workflow and outcome verification module
+from app.domain_workflows import install as install_domain_workflows
+install_domain_workflows(app, db, get_user)
