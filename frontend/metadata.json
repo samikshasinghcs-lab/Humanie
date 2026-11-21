@@ -1,0 +1,6 @@
+{
+  "name": "HUMANIE — Intelligence for Humanity",
+  "description": "Accountable multi-domain humanitarian and social protection case management, Equity LP resource matching, Decision Vault, and Integrity Shield across Food, Work, and Education.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
