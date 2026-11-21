@@ -1,0 +1,45 @@
+name: Integrate HUMANIE Connected Bundle
+
+on:
+  push:
+    paths:
+      - ".integration/Humanie-connected.zip"
+      - ".github/workflows/integrate-connected-bundle.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Overlay connected bundle onto repository
+        run: |
+          set -euo pipefail
+          ZIP=".integration/Humanie-connected.zip"
+          if [ ! -f "$ZIP" ]; then
+            echo "Bundle ZIP not present; workflow setup only."
+            exit 0
+          fi
+          mkdir -p /tmp/humanie-unpack /tmp/humanie-overlay
+          unzip -q "$ZIP" -d /tmp/humanie-unpack
+          ROOT="$(find /tmp/humanie-unpack -mindepth 1 -maxdepth 1 -type d | head -1)"
+          if [ -z "$ROOT" ]; then ROOT=/tmp/humanie-unpack; fi
+          rsync -a --exclude='.git' "$ROOT/" "$GITHUB_WORKSPACE/"
+          rm -f "$ZIP"
+      - name: Commit integrated files
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No integration changes."
+            exit 0
+          fi
+          git commit -m "Integrate HUMANIE connected bundle"
+          git push
