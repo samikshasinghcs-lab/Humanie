@@ -17,7 +17,7 @@ function parseCSV(text: string): string[][] {
 }
 export async function GET(req: NextRequest){
   const role=(req.headers.get('x-humanie-role')||'Auditor') as UserRole; const perm=ROLE_PERMISSION_MATRIX[role];
-  if(!perm || !perm.canViewAuditLedger) return NextResponse.json({error:'Forbidden'}, {status:403});
+  if(!perm || !perm.canExportFullPIIOrAudit) return NextResponse.json({error:'Forbidden'}, {status:403});
   const s=getHumanieState(); return NextResponse.json({apiVersion:'v1',imports:s.importLogs, mappingTemplate:{alias:['alias','beneficiaryAlias','name'],domain:['domain'],ward:['ward','location'],need:['need','summaryNeed'],urgency:['urgency','priority']}});
 }
 export async function POST(req: NextRequest){
