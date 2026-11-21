@@ -889,3 +889,7 @@ install_case_infrastructure(app, db, get_user)
 # Batch 2 domain workflow and outcome verification module
 from app.domain_workflows import install as install_domain_workflows
 install_domain_workflows(app, db, get_user)
+
+# Batch 3 governance, Decision Vault and integrity workflows
+from app.governance import install as install_governance
+install_governance(app, db, get_user)
