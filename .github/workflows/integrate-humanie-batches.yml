@@ -1,0 +1,54 @@
+name: Integrate HUMANIE Batches 1-4
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  integrate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Integrate unified package
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="HUMANIE_All_Batches_1-4_Unified.zip"
+          if [ ! -f "$ZIP" ]; then
+            echo "Unified ZIP already integrated or absent; no-op."
+            exit 0
+          fi
+          mkdir -p /tmp/humanie-unified frontend
+          unzip -q "$ZIP" -d /tmp/humanie-unified
+          SRC="/tmp/humanie-unified/humanie_work"
+          test -d "$SRC"
+          # Integrate the Next.js demonstrator into a separate frontend directory.
+          # The existing Python backend's app/ directory is deliberately preserved.
+          rsync -a --delete "$SRC/" frontend/
+          cp /tmp/humanie-unified/HUMANIE_BATCHES_1-4_UNIFIED.md HUMANIE_BATCHES_1-4_UNIFIED.md
+          rm "$ZIP"
+          cat > frontend/INTEGRATION.md <<'EOF'
+          # HUMANIE Frontend Integration
+          
+          This Next.js demonstrator is integrated under `frontend/` to preserve the existing Python backend at the repository root.
+          
+          Run from this directory:
+          
+          ```bash
+          npm install
+          npm run dev
+          ```
+          
+          Batch 1-4 API routes in this demonstrator are frontend-local Next.js routes. They are not automatically connected to the Python backend. Build verification and security hardening remain necessary.
+          EOF
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Integrate unified HUMANIE batches 1-4 frontend"
+          git push
