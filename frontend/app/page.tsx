@@ -177,6 +177,9 @@ export default function HumanieHomePage() {
           >
             HUMANIE
           </a>
+          <a href="/engine" className="md:hidden text-sm font-semibold text-emerald-700 whitespace-nowrap">
+            Live Engine
+          </a>
 
           {/* Zone 2: 4 clean single-line text navigation links */}
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
@@ -224,6 +227,12 @@ export default function HumanieHomePage() {
             >
               04. Global & Hardening
             </button>
+          <a
+              href="/engine"
+              className="transition-colors whitespace-nowrap shrink-0 pb-0.5 text-emerald-700 font-semibold hover:text-emerald-900"
+            >
+              Live Engine
+            </a>
           </nav>
 
           {/* Zone 3: 1 primary action */}

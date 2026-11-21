@@ -85,13 +85,22 @@ def attach(app,DB_PATH,db,get_user,audit,ROOT,STATIC):
     def audit_verify(user=Depends(get_user)): return ledger.verify()
     @app.post('/api/audit/tamper-test')
     def audit_tamper(body:TamperTest,user=Depends(get_user)):
-        with ledger.conn() as c:
-            row=c.execute('SELECT seq,details FROM audit_chain ORDER BY seq DESC LIMIT 1').fetchone() if body.seq is None else c.execute('SELECT seq,details FROM audit_chain WHERE seq=?',(body.seq,)).fetchone()
-            if not row: raise HTTPException(404,'No audit row found')
-            seq=row['seq']; details=row['details']
-            # Deliberate test mutation: alter a selected row's stored details without recalculating hashes.
-            c.execute('UPDATE audit_chain SET details=? WHERE seq=?',(details+' [TAMPER TEST]',seq)); c.commit()
-        return {'tampered_seq':seq,'verification':ledger.verify(),'notice':'Integrity test deliberately altered the ledger. Restore the test database or reset the demo ledger before continuing.'}
+        """Tamper demo on a throw-away COPY of the ledger; the live ledger is never modified."""
+        import shutil, tempfile
+        tmpdir=tempfile.mkdtemp(prefix='humanie_tamper_')
+        try:
+            copy_path=Path(tmpdir)/'ledger_copy.db'
+            with ledger.conn() as src, sqlite3.connect(copy_path) as dst: src.backup(dst)
+            probe=AuditLedger(copy_path)
+            with probe.conn() as c:
+                row=c.execute('SELECT seq,details FROM audit_chain ORDER BY seq DESC LIMIT 1').fetchone() if body.seq is None else c.execute('SELECT seq,details FROM audit_chain WHERE seq=?',(body.seq,)).fetchone()
+                if not row: raise HTTPException(404,'No audit row found')
+                seq=row['seq']
+                # Deliberate test mutation on the copy: alter stored details without recalculating hashes.
+                c.execute('UPDATE audit_chain SET details=? WHERE seq=?',(row['details']+' [TAMPER TEST]',seq)); c.commit()
+            return {'tampered_seq':seq,'verification_of_tampered_copy':probe.verify(),'live_ledger':ledger.verify(),'notice':'Tamper test ran on a temporary copy. The live ledger was not modified.'}
+        finally:
+            shutil.rmtree(tmpdir,ignore_errors=True)
     @app.post('/api/simulate')
     def simulate(body:Simulate,user=Depends(get_user)):
         cases,resources=owned_data(user['id']); rtype=body.resource_type

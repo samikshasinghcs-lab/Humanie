@@ -1,6 +1,14 @@
 import type {NextConfig} from 'next';
 
+// Python engine (FastAPI) URL, e.g. https://humanie-api.onrender.com  (no trailing slash).
+// Must be set at build time on Vercel. Browser calls go to /engine-api/* and are proxied here.
+const BACKEND_URL = (process.env.HUMANIE_BACKEND_URL || '').replace(/\/+$/, '');
+
 const nextConfig: NextConfig = {
+  async rewrites() {
+    if (!BACKEND_URL) return [];
+    return [{source: '/engine-api/:path*', destination: `${BACKEND_URL}/:path*`}];
+  },
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,

@@ -37,7 +37,11 @@ TOKEN_MINUTES = 60 * 8
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2 = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
-app = FastAPI(title="HUMANIE Intelligence API", version="0.9.0")
+app = FastAPI(title="HUMANIE Intelligence API", version="0.9.1")
+_CORS = [o.strip() for o in os.getenv("HUMANIE_CORS_ORIGINS", "").split(",") if o.strip()]
+if _CORS:
+    from fastapi.middleware.cors import CORSMiddleware
+    app.add_middleware(CORSMiddleware, allow_origins=_CORS, allow_methods=["*"], allow_headers=["*"])
 app.mount("/static", StaticFiles(directory=str(STATIC)), name="static")
 
 # Simple in-memory rate limiter for demo protection. Use a gateway/WAF in production.

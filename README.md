@@ -186,7 +186,7 @@ These capabilities are exploratory and require verified field data, safeguards, 
 
 ## Phase 2 operational additions (v0.9.1 code snapshot)
 
-- Hash-chained audit records in a separate SQLite ledger (`humanie_audit_chain.db` adjacent to configured DB); `GET /api/audit/verify` checks link and record digests. `POST /api/audit/tamper-test` deliberately mutates a ledger row for demonstration and **leaves the test ledger compromised**.
+- Hash-chained audit records in a separate SQLite ledger (`humanie_audit_chain.db` adjacent to configured DB); `GET /api/audit/verify` checks link and record digests. `POST /api/audit/tamper-test` mutates a row in a temporary **copy** of the ledger to demonstrate detection; the live ledger is never modified.
 - Scenario endpoint `POST /api/simulate` runs SciPy/HiGHS on open, recorded workspace cases for food/training/employment types, with recorded demand and the minimum cost-per-unit among matching active providers used as a proxy route cost. This is a simplified workspace model, not a district-wide logistics model. Shadow-price fields are solver marginals and Bottleneck Advisor text is conditional on constraint marginal values.
 - Floor infeasibility currently reports floor-only aggregate stock/transport slack estimates, not a full auxiliary slack LP; do not describe it as a fully optimized infeasibility recovery solver.
 - Case matching can store dignity preferences (cooking fuel, dietary needs, commute, childcare) in the constraints JSON. Provider attributes must encode matching values; absent capability data is not proof of compatibility. Haversine is available when both case and provider coordinate arrays are supplied; matching otherwise falls back to locality/district proxies.
