@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowDown, ArrowRight, ShieldCheck, Globe2, Network, HeartHandshake, Activity, Menu, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import PitchStoryPopup from '@/components/PitchStoryPopup';
 
 const flow = ['Need','Match','Human review','Delivery','Result','Evidence'];
 const domains = [
@@ -57,6 +58,7 @@ export default function LandingPage(){
     </div><div className="why-story-nav"><button type="button" className="why-story-prev" disabled={deepDiveSlide===0} onClick={()=>setDeepDiveSlide(s=>Math.max(0,s-1))}>← Previous</button><span>{deepDiveSlide+1} of 7</span><button type="button" className="why-story-next" onClick={()=>deepDiveSlide===6?setDeepDiveOpen(false):setDeepDiveSlide(s=>s+1)}>{deepDiveSlide===6?'Finish':'Next'} →</button></div>
    </div>
   </div>}
+  <PitchStoryPopup />
   <footer className="landing-footer"><Link href="/" className="wordmark"><span className="mark">H</span> HUMANIE</Link><p>Intelligence for Humanity · Supports, never replaces, human decision authority.</p><div><a href="#top">Back to top ↑</a><Link href="/dashboard">Operations</Link></div></footer>
  </main>
 }
