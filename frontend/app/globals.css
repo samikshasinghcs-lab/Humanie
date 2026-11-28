@@ -292,3 +292,36 @@ table { max-width: 100%; }
 @keyframes paper-drift{0%,100%{transform:rotate(-11deg)}50%{transform:rotate(-8deg) translateY(-3px)}}
 @keyframes barrier-flicker{0%,100%{opacity:.65}50%{opacity:.28}}
 @media(prefers-reduced-motion:reduce){.human-head:before,.scene-0 .story-paper,.scene-1 .story-work-barrier{animation:none!important}}
+
+
+/* Twelve-part animated pitch popup */
+.pitch-story-launch{max-width:1200px;margin:0 auto;padding:0 5vw 4rem}
+.pitch-launch-card{width:100%;text-align:left;cursor:pointer}
+.pitch-overlay{z-index:10020}
+.pitch-shell{max-height:min(92vh,900px);overflow:hidden}
+.pitch-content{overflow:auto}
+.pitch-animated-scene{height:190px;margin:0 auto 26px;max-width:580px;position:relative;overflow:hidden;border-radius:22px;background:linear-gradient(135deg,#18392f,#264d40 55%,#b4c7a5);display:flex;align-items:center;justify-content:center;isolation:isolate}
+.pitch-scene-orbit{position:absolute;width:230px;height:230px;border:1px solid rgba(245,239,220,.42);border-radius:50%;animation:pitch-orbit 12s linear infinite}
+.pitch-scene-orbit:before,.pitch-scene-orbit:after{content:'';position:absolute;inset:24px;border:1px dashed rgba(245,239,220,.25);border-radius:50%}
+.pitch-scene-orbit:after{inset:48px;border-style:solid}
+.pitch-scene-core{width:74px;height:74px;border-radius:23px;display:grid;place-items:center;background:#f2ead8;color:#274638;font-weight:900;font-size:32px;box-shadow:0 10px 35px #10281f55;animation:pitch-core-pulse 3s ease-in-out infinite}
+.pitch-scene-chip{position:absolute;padding:9px 13px;border-radius:999px;background:#f2ead8;color:#284738;font-size:10px;letter-spacing:.8px;font-weight:800;box-shadow:0 8px 18px #10281f35;animation:pitch-chip-float 4s ease-in-out infinite}
+.chip-one{left:8%;top:24%;animation-delay:.2s}.chip-two{right:7%;top:22%;animation-delay:1s}.chip-three{bottom:15%;left:50%;transform:translateX(-50%);animation-delay:1.8s}
+.pitch-scene-line{position:absolute;width:70%;height:1px;background:rgba(246,238,216,.3);top:50%;animation:pitch-line-glow 2s infinite}
+.pitch-story-launch .why-launch-title{display:block}
+.pitch-story-launch .why-launch-copy{display:block}
+.pitch-story-launch .why-launch-action{display:flex}
+.pitch-story-launch .why-launch-card{min-height:190px}
+.pitch-content h2{animation:pitch-title-in .5s cubic-bezier(.2,.8,.2,1) both}
+.pitch-content p{animation:pitch-text-in .7s .1s both}
+.pitch-content .why-story-flow>div{animation:pitch-step-in .5s cubic-bezier(.2,.8,.2,1) both}
+.pitch-content .why-story-flow>div:nth-child(2){animation-delay:.07s}.pitch-content .why-story-flow>div:nth-child(3){animation-delay:.14s}.pitch-content .why-story-flow>div:nth-child(4){animation-delay:.21s}.pitch-content .why-story-flow>div:nth-child(5){animation-delay:.28s}.pitch-content .why-story-flow>div:nth-child(6){animation-delay:.35s}
+@keyframes pitch-orbit{to{transform:rotate(360deg)}}
+@keyframes pitch-core-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes pitch-chip-float{0%,100%{translate:0 0}50%{translate:0 -8px}}
+@keyframes pitch-line-glow{0%,100%{opacity:.3}50%{opacity:.9}}
+@keyframes pitch-title-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pitch-text-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pitch-step-in{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:600px){.pitch-story-launch{padding:0 4vw 3rem}.pitch-animated-scene{height:155px}.pitch-shell{max-height:94vh}.pitch-scene-chip{font-size:8px;padding:8px 10px}.pitch-scene-core{width:58px;height:58px;font-size:25px;border-radius:18px}}
+@media(prefers-reduced-motion:reduce){.pitch-scene-orbit,.pitch-scene-core,.pitch-scene-chip,.pitch-scene-line,.pitch-content h2,.pitch-content p,.pitch-content .why-story-flow>div{animation:none!important}}
