@@ -178,3 +178,17 @@ table { max-width: 100%; }
 @keyframes coreAssemble{0%{opacity:0;transform:translate(-50%,-50%) scale(.2);box-shadow:0 0 0 transparent}75%{transform:translate(-50%,-50%) scale(1.14)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
 @keyframes orbConnect{0%{opacity:0;transform:scale(.55) translateY(20px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 @media(prefers-reduced-motion:reduce){.scene-1 .scene-silo,.scene-1 .scene-fragments,.scene-2 .scene-node,.scene-2 .scene-connector,.scene-3 .scene-core,.scene-3 .scene-orb{animation:none!important}}
+
+/* Persistent storytelling motif: same pieces migrate from isolation into HUMANIE's loop */
+.story-transform-bridge{position:absolute;inset:0;z-index:4;pointer-events:none;opacity:.9}
+.bridge-node{position:absolute;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:900;letter-spacing:.1em;color:#f6f5ed;background:#173e30;border:1px solid #b9d2ad;box-shadow:0 0 0 6px #789c6b18,0 8px 22px #17392e30;transition:left 1.05s cubic-bezier(.16,1,.3,1),top 1.05s cubic-bezier(.16,1,.3,1),transform .8s,opacity .6s}
+.bridge-n1{left:12%;top:20%}.bridge-n2{left:72%;top:18%}.bridge-n3{left:18%;top:72%}.bridge-n4{left:76%;top:70%}
+.bridge-line{position:absolute;height:2px;width:0;background:linear-gradient(90deg,#8daf80,#507b57);transform-origin:left;opacity:0;transition:width .8s,opacity .6s,transform 1s;box-shadow:0 0 10px #84a87b80}
+.bridge-line-a{left:15%;top:30%;transform:rotate(12deg)}.bridge-line-b{left:20%;top:73%;transform:rotate(-30deg)}.bridge-line-c{left:72%;top:25%;transform:rotate(60deg)}
+.why-scene[data-story-scene="0"] .bridge-node{opacity:.25;transform:scale(.75);background:#b8c5b1;color:#345541}
+.why-scene[data-story-scene="1"] .bridge-node{opacity:.65;transform:scale(.92)}.why-scene[data-story-scene="1"] .bridge-n1{left:9%;top:16%}.why-scene[data-story-scene="1"] .bridge-n2{left:76%;top:15%}.why-scene[data-story-scene="1"] .bridge-n3{left:23%;top:75%}.why-scene[data-story-scene="1"] .bridge-n4{left:68%;top:73%}
+.why-scene[data-story-scene="2"] .bridge-node{opacity:1;transform:scale(1)}.why-scene[data-story-scene="2"] .bridge-n1{left:36%;top:20%}.why-scene[data-story-scene="2"] .bridge-n2{left:58%;top:20%}.why-scene[data-story-scene="2"] .bridge-n3{left:58%;top:65%}.why-scene[data-story-scene="2"] .bridge-n4{left:36%;top:65%}
+.why-scene[data-story-scene="2"] .bridge-line{opacity:.7;width:32%;}.why-scene[data-story-scene="2"] .bridge-line-a{left:40%;top:31%;transform:rotate(0deg)}.why-scene[data-story-scene="2"] .bridge-line-b{left:39%;top:71%;transform:rotate(0deg)}.why-scene[data-story-scene="2"] .bridge-line-c{left:59%;top:33%;transform:rotate(90deg);width:34%}
+.why-scene[data-story-scene="3"] .bridge-node{left:50%;top:50%;opacity:.2;transform:scale(.35)}.why-scene[data-story-scene="3"] .bridge-line{opacity:.15;width:0}
+.why-scene[data-story-scene="4"] .bridge-node{opacity:.25;transform:scale(.7)}.why-scene[data-story-scene="5"] .bridge-node{opacity:.8;transform:scale(1.05)}
+@media(prefers-reduced-motion:reduce){.bridge-node,.bridge-line{transition:none!important}}
