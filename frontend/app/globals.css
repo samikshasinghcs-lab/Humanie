@@ -75,3 +75,23 @@ table { max-width: 100%; }
 @media(max-width:900px){.humanie-landing .landing-hero{min-height:auto}.humanie-landing .hero-art{min-height:440px}.humanie-landing .intelligence-head{grid-template-columns:1fr}.humanie-landing .principle-focus{font-size:11px}}
 @media(max-width:640px){.humanie-landing .landing-nav{height:68px}.humanie-landing .landing-hero{padding:48px 22px 34px}.humanie-landing .landing-hero h1{font-size:clamp(43px,12vw,55px)}.humanie-landing .hero-art{min-height:360px;transform:scale(.9);margin:0 -12px}.humanie-landing .orbit-summary{top:0;right:0}.humanie-landing .journey{gap:6px;margin-top:46px}.humanie-landing .journey-button{min-width:75px}.humanie-landing .journey-button .journey-circle{width:46px;height:46px}.humanie-landing .journey-detail{padding:18px}.humanie-landing .principle-focus{left:5%;right:5%;bottom:5%;}.humanie-landing .principle-tag{padding:9px 11px;font-size:11px}}
 @media(prefers-reduced-motion:reduce){.humanie-landing .orbit,.humanie-landing .core,.humanie-landing .node,.humanie-landing .shield-ring:before,.humanie-landing .shield-ring:after,.humanie-landing .closing-rings{animation:none!important}}
+
+/* Motion pass: animated coordination journey and editorial scroll transitions */
+.humanie-landing .journey{isolation:isolate;min-height:92px;align-items:flex-start}
+.humanie-landing .journey-line{top:25px;height:3px;border-radius:999px;background:linear-gradient(90deg,#9dbb8d,#d3dfc9,#9dbb8d);overflow:visible;box-shadow:0 0 12px #8bb77c45}
+.humanie-landing .journey-line:after{content:'';position:absolute;left:-15%;top:-8px;width:30%;height:19px;border-radius:50%;background:radial-gradient(ellipse,#a4c48a75,transparent 70%);animation:journeyWave 4.8s ease-in-out infinite}
+.humanie-landing .journey-button .journey-circle{position:relative;animation:journeyIdle 4s ease-in-out infinite}
+.humanie-landing .journey-button:nth-child(2) .journey-circle{animation-delay:.35s}.humanie-landing .journey-button:nth-child(3) .journey-circle{animation-delay:.7s}.humanie-landing .journey-button:nth-child(4) .journey-circle{animation-delay:1.05s}.humanie-landing .journey-button:nth-child(5) .journey-circle{animation-delay:1.4s}.humanie-landing .journey-button:nth-child(6) .journey-circle{animation-delay:1.75s}
+.humanie-landing .journey-button.journey-active .journey-circle{animation:journeyActive 2.4s ease-in-out infinite}
+.humanie-landing .journey-detail{animation:journeyReveal .45s cubic-bezier(.16,1,.3,1)}
+.humanie-landing .orbit{transform-origin:center;will-change:transform}.humanie-landing .orbit-one{animation:orbitFloat 32s linear infinite}.humanie-landing .orbit-two{animation:orbitFloat 26s linear infinite reverse}.humanie-landing .orbit-three{animation:orbitFloat 46s linear infinite}
+.humanie-landing .art-glow{animation:glowBreath 7s ease-in-out infinite}.humanie-landing .node-dot{animation:dotPulse 2.7s ease-in-out infinite}
+.humanie-landing .domain-card{animation:cardFloat 8s ease-in-out infinite}.humanie-landing .domain-card:nth-child(2){animation-delay:1.3s}.humanie-landing .domain-card:nth-child(3){animation-delay:2.6s}
+.humanie-landing [data-reveal]>*{transition-delay:0s}
+@keyframes journeyWave{0%{left:-15%;opacity:.2}50%{left:42%;opacity:1}100%{left:100%;opacity:.2}}
+@keyframes journeyIdle{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes journeyActive{0%,100%{box-shadow:0 0 0 5px #b6d49a38,0 8px 24px #10392c16}50%{box-shadow:0 0 0 11px #b6d49a20,0 8px 24px #10392c16}}
+@keyframes glowBreath{0%,100%{opacity:.65;transform:scale(.96)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes dotPulse{0%,100%{box-shadow:0 0 0 0 #8cae7950}50%{box-shadow:0 0 0 7px #8cae7900}}
+@keyframes cardFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@media(prefers-reduced-motion:reduce){.humanie-landing .journey-line:after,.humanie-landing .journey-button .journey-circle,.humanie-landing .art-glow,.humanie-landing .node-dot,.humanie-landing .domain-card{animation:none!important}}
