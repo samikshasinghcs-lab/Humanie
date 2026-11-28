@@ -268,3 +268,27 @@ table { max-width: 100%; }
 @keyframes story-walk-to-help{from{transform:translate(-50%,35px);opacity:.3}to{transform:translate(-50%,0);opacity:1}}
 @media(max-width:600px){.story-help-card{min-width:82px;padding:10px 8px;font-size:8px}.story-help-sign{font-size:10px;width:75%}.story-help-sign em{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.scene-0 .story-human-problem,.scene-0 .story-phone,.scene-1 .story-human-work,.scene-1 .story-job-card,.story-help-card,.story-help-sign,.scene-2 .story-human-connected{animation:none!important}}
+
+/* Handmade cartoon character pass: expressive face, breathing, purposeful acting and grounded story staging. */
+.story-human{filter:drop-shadow(0 10px 9px rgba(29,43,36,.13));}
+.human-head{background:linear-gradient(145deg,#e7b99a,#c88e6d);border:1px solid #a87860;}
+.human-head:before{content:'';position:absolute;left:9px;top:14px;width:4px;height:5px;border-radius:50%;background:#342a2a;box-shadow:12px 0 #342a2a;animation:cartoon-blink 5.8s infinite;}
+.human-head:after{content:'';position:absolute;left:13px;top:25px;width:9px;height:4px;border-bottom:2px solid #7c493e;border-radius:0 0 9px 9px;}
+.human-hair{z-index:2;pointer-events:none;}
+.human-body{background:linear-gradient(135deg,#d98970,#a9574c);box-shadow:inset -6px -5px rgba(88,47,42,.12);}
+.human-arm,.human-leg{box-shadow:inset -3px -3px rgba(90,50,38,.09);}
+.story-human-problem .human-head:before{animation:cartoon-blink 5.2s infinite,story-look-down 3.8s 1s infinite;}
+.scene-0 .story-paper{animation:paper-drift 4s ease-in-out infinite;}
+.scene-0 .scene-home{opacity:.38;}
+.scene-0 .scene-label{background:#f8f4e9c9;border-radius:999px;padding:8px 13px;color:#45624f;}
+.scene-1 .story-work-caption{background:#203b30b8;padding:8px 12px;border-radius:999px;}
+.scene-1 .story-work-barrier{animation:barrier-flicker 2.8s infinite;}
+.scene-2 .story-human-connected{z-index:8;}
+.scene-2 .story-help-card{box-shadow:0 10px 20px rgba(36,61,46,.08);border-color:#d3dfca;}
+.scene-2 .food-help{border-left:4px solid #9aaf79}.scene-2 .work-help{border-left:4px solid #82a8a0}.scene-2 .school-help{border-left:4px solid #d2b27e}.scene-2 .transit-help{border-left:4px solid #b6a1c8}
+.scene-2 .story-help-sign{font-family:inherit;letter-spacing:1px;}
+@keyframes cartoon-blink{0%,43%,46%,100%{transform:scaleY(1)}44%,45%{transform:scaleY(.15)}}
+@keyframes story-look-down{0%,100%{transform:translateY(0)}45%,60%{transform:translateY(2px)}}
+@keyframes paper-drift{0%,100%{transform:rotate(-11deg)}50%{transform:rotate(-8deg) translateY(-3px)}}
+@keyframes barrier-flicker{0%,100%{opacity:.65}50%{opacity:.28}}
+@media(prefers-reduced-motion:reduce){.human-head:before,.scene-0 .story-paper,.scene-1 .story-work-barrier{animation:none!important}}
