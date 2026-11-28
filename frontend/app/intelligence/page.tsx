@@ -26,7 +26,7 @@ export default function IntelligencePage(){
  useEffect(()=>{try{const s=localStorage.getItem(storeKey);if(s)setTracker(JSON.parse(s));}catch{}setLoaded(true)},[]);
  useEffect(()=>{if(loaded)try{localStorage.setItem(storeKey,JSON.stringify(tracker));}catch{}},[tracker,loaded]);
  const completed=tracker.checkpoints.filter(c=>c.status==='Reviewed').length;
- const update=(id:string,key:keyof Checkpoint,value:string)=>setTracker(t=>({...t,checkpoints:t.checkpoints.map(c=>c.id===id?{...c,[key]:value}:c)}));
+ const update=<K extends keyof Checkpoint>(id:string,key:K,value:Checkpoint[K])=>setTracker(t=>({...t,checkpoints:t.checkpoints.map(c=>c.id===id?{...c,[key]:value}:c)}));
  const addCheckpoint=()=>setTracker(t=>({...t,checkpoints:[...t.checkpoints,{id:'cp'+(t.checkpoints.length+1),label:'New checkpoint',due:'',predicted:'',actual:'',evidence:'',status:'Pending'}]}));
  const prediction=useMemo(()=>forecasts[domain],[domain]);
  return <main className="min-h-screen bg-[#fbf8f1] text-[#153c30]">
