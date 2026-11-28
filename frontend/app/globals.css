@@ -119,3 +119,19 @@ table { max-width: 100%; }
 @keyframes storySweep{0%{opacity:.7;transform:translateX(-45%)}100%{opacity:0;transform:translateX(45%)}}
 @keyframes sceneSettle{0%{opacity:.5;transform:scale(.94) rotateX(7deg)}100%{opacity:1;transform:scale(1) rotateX(0)}}
 @media(prefers-reduced-motion:reduce){.why-story-content,.why-story-content:before,.why-scene,.why-story-progress span,.why-story-nav button{animation:none!important;transition:none!important}}
+
+/* Documentary cinematic refinement */
+.why-story-overlay{background:radial-gradient(ellipse at 50% 8%,#244c3c66,#071c15f5 78%)}
+.why-story-shell{background:linear-gradient(160deg,#faf8f1,#f0f2e9 70%,#e8eee2);border:1px solid #d7e4d0;box-shadow:0 40px 120px #0007}
+.why-scene{min-height:190px;perspective:900px;background:linear-gradient(135deg,#e6efe0,#dce8d5 40%,#f4f3eb)}
+.why-scene:before{content:'';position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(ellipse at 50% 45%,transparent 35%,#173b2c1b 100%),linear-gradient(0deg,#173b2c18,transparent 30%,#ffffff15)}
+.why-scene:after{content:'';position:absolute;inset:0;z-index:6;pointer-events:none;opacity:.12;background-image:radial-gradient(#476a4e .55px,transparent .75px);background-size:5px 5px;mix-blend-mode:multiply}
+.scene-glow{filter:blur(52px);opacity:.48;animation:filmLightDrift 9s ease-in-out infinite alternate}
+.scene-person,.scene-home,.scene-bowl,.scene-silo,.scene-node,.scene-core,.scene-orb,.scene-chart,.scene-metric,.scene-ring,.scene-future{filter:drop-shadow(0 8px 14px #17392e12)}
+.scene-node{box-shadow:0 8px 25px #2f553222,0 0 0 1px #ffffff80 inset}.scene-chart{filter:drop-shadow(0 8px 12px #4c744522)}
+.scene-metric{animation:metricReveal .9s cubic-bezier(.16,1,.3,1) both}
+.why-story-content h2{animation:editorialText .65s .08s cubic-bezier(.16,1,.3,1) both}.why-story-content p{animation:editorialText .65s .18s cubic-bezier(.16,1,.3,1) both}.why-story-stats,.why-story-flow,.why-story-highlight{animation:editorialText .7s .26s cubic-bezier(.16,1,.3,1) both}
+.why-story-tag{display:inline-flex;align-items:center;gap:9px}.why-story-tag:before{content:'';height:1px;width:24px;background:#88a47e;display:inline-block}
+.why-story-counter{display:inline-flex;align-items:center;gap:10px}.why-story-counter:after{content:'HUMANIE · FIELD STORY';font-size:9px;letter-spacing:.12em;color:#9aa994}
+@keyframes filmLightDrift{to{transform:translate(7%,5%) scale(1.12)}}@keyframes editorialText{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}@keyframes metricReveal{from{opacity:0;transform:translateY(12px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.why-story-content h2,.why-story-content p,.why-story-stats,.why-story-flow,.why-story-highlight,.scene-glow,.scene-metric{animation:none!important}}
